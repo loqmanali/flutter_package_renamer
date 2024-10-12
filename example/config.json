@@ -1,8 +1,0 @@
-{
-  "appName": "Test App",
-  "appDescription": "A test app",
-  "appVersion": "1.0.0",
-  "androidPackage": "com.example.test",
-  "iosBundleId": "com.example.test",
-  "appCopyright": "Copyright 2024 Example Inc."
-}
