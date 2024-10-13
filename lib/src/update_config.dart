@@ -42,10 +42,10 @@ class UpdateConfig {
     print('🚀 Starting configuration update...');
     print(' 📦 App Name: $appName');
     print(' 📝 App Description: $appDescription');
-    print(' 📦 App Version: $appVersion');
-    print(' 📱 Android Package: $androidPackage');
-    print(' 📱 iOS Bundle ID: $iosBundleId');
-    print(' 📝 App Copyright: $appCopyright');
+    print(' 🔢 App Version: $appVersion');
+    print(' 🤖 Android Package: $androidPackage');
+    print(' 🍎 iOS Bundle ID: $iosBundleId');
+    print(' ©️  App Copyright: $appCopyright');
     print('----------------------------------------');
 
     // Rename Android and iOS packages
@@ -61,7 +61,8 @@ class UpdateConfig {
     await _updateIosInfoPlist(appVersion, iosBundleId);
 
     // Update Android strings.xml
-    await _updateAndroidStringsXml(appDescription, appCopyright, appName);
+    await _updateAndroidStringsXml(
+        appDescription, appCopyright, androidPackage);
 
     print('✅ Configuration update completed successfully.');
   }
@@ -70,7 +71,7 @@ class UpdateConfig {
     try {
       return jsonDecode(contents) as Map<String, dynamic>;
     } catch (e) {
-      print('ERROR: Failed to parse config.json - $e');
+      print('❌ ERROR: Failed to parse config.json - $e');
       exit(1);
     }
   }
@@ -89,7 +90,7 @@ class UpdateConfig {
     final pubspecPath = '$projectRoot/pubspec.yaml';
     final pubspecFile = File(pubspecPath);
     if (!await pubspecFile.exists()) {
-      print('Warning: pubspec.yaml not found.');
+      print('❌ Warning: pubspec.yaml not found.');
       return;
     }
 
@@ -185,11 +186,11 @@ class UpdateConfig {
     );
 
     writeFileAsString(infoPlistPath, contents);
-    print('ios/Runner/Info.plist updated with version details.');
+    print('✅ ios/Runner/Info.plist updated with version details.');
   }
 
   Future<void> _updateAndroidStringsXml(
-      String appDescription, String copyright, String appName) async {
+      String appDescription, String copyright, String androidPackage) async {
     final stringsXmlPath =
         '$projectRoot/android/app/src/main/res/values/strings.xml';
     final stringsXmlFile = File(stringsXmlPath);
@@ -211,7 +212,8 @@ class UpdateConfig {
     // Update app_name
     contents = contents.replaceAllMapped(
       RegExp(r'<string name="app_name">.*?</string>'),
-      (match) => '<string name="app_name">${_extractAppName(appName)}</string>',
+      (match) =>
+          '<string name="app_name">${_extractAppName(androidPackage)}</string>',
     );
 
     // Update or add copyright

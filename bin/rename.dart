@@ -8,13 +8,13 @@ import 'package:flutter_package_renamer/src/update_config.dart';
 
 Future<void> main(List<String> arguments) async {
   if (arguments.isEmpty) {
-    print('Usage: rename <new_package_name> [--android|--ios|--both]');
+    print('❌ Usage: rename <new_package_name> [--android|--ios|--both]');
     print('   or: rename --update-config <path_to_config.json>');
     exit(0);
   }
 
   if (arguments.length == 1 && arguments[0] == '--update-config') {
-    print('Usage: rename --update-config <path_to_config.json>');
+    print('❌ Usage: rename --update-config <path_to_config.json>');
     exit(0);
   }
 
@@ -44,14 +44,14 @@ Future<void> main(List<String> arguments) async {
     } else if (platformFlag == '--both') {
       await ChangeAppPackageName.startBoth(newPackageName, newPackageName);
     } else {
-      print('Invalid platform flag. Use "--android", "--ios", or "--both".');
+      print('❌ Invalid platform flag. Use "--android", "--ios", or "--both".');
       exit(1);
     }
     exit(0);
   }
 
   print('❌ Invalid arguments.');
-  print('Usage: rename <new_package_name> [--android|--ios|--both]');
+  print(' Usage: rename <new_package_name> [--android|--ios|--both]');
   print('   or: rename --update-config <path_to_config.json>');
   exit(1);
 }
