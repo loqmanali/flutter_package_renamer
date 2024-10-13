@@ -1,4 +1,4 @@
-```markdown
+```
 # flutter_package_renamer
 
 **A Flutter package to automate the renaming of Android packages and iOS bundle identifiers, along with updating app configurations like name, description, version, and copyright.**
@@ -42,6 +42,7 @@ Ensure you have the following installed:
   - **Linux (Debian/Ubuntu)**: `sudo apt-get install jq`
   - **Windows**: Install via [Chocolatey](https://chocolatey.org/packages/jq) or download from the [official site](https://stedolan.github.io/jq/download/).
 - **Git**: For version control.
+```
 
 ## Installation
 
@@ -124,6 +125,195 @@ The `flutter_package_renamer` package provides two primary methods to perform re
 2. **Using the Dart CLI**
 
 ### Running the Shell Script (`update_config.sh`)
+### Create file update_config.sh   in root project file
+
+``` bash
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+# Function to print error messages and exit
+function error_exit {
+    echo "$1" 1>&2
+    exit 1
+}
+
+# Path to the config.json file
+CONFIG_FILE="config.json"
+
+# Path to the strings.xml file
+STRINGS_FILE="android/app/src/main/res/values/strings.xml"
+
+# Check if config.json exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    error_exit "❌ Error: $CONFIG_FILE not found! Please create config.json with required fields."
+fi
+
+# Check if jq is installed
+if ! command -v jq >/dev/null 2>&1; then
+    error_exit "❌ Error: jq is not installed. Please install jq to proceed. (https://stedolan.github.io/jq/)"
+fi
+
+# Read fields from config.json using jq
+APP_NAME=$(jq -r '.appName' "$CONFIG_FILE")
+APP_DESCRIPTION=$(jq -r '.appDescription' "$CONFIG_FILE")
+APP_VERSION=$(jq -r '.appVersion' "$CONFIG_FILE")
+ANDROID_PACKAGE=$(jq -r '.androidPackage' "$CONFIG_FILE")
+IOS_BUNDLE_ID=$(jq -r '.iosBundleId' "$CONFIG_FILE")
+APP_COPYRIGHT=$(jq -r '.appCopyright' "$CONFIG_FILE")
+
+# Validate that the necessary fields are present
+if [ -z "$APP_NAME" ] || [ -z "$APP_DESCRIPTION" ] || [ -z "$APP_VERSION" ] || [ -z "$ANDROID_PACKAGE" ] || [ -z "$IOS_BUNDLE_ID" ] || [ -z "$APP_COPYRIGHT" ]; then
+    error_exit "❌ Error: One or more required fields are missing in $CONFIG_FILE."
+fi
+
+# Starting configuration update with emoji
+echo "🚀 Starting configuration update..."
+echo "App Name: $APP_NAME 📱"
+echo "App Description: $APP_DESCRIPTION 📝"
+echo "App Version: $APP_VERSION 🔢"
+echo "Android Package: $ANDROID_PACKAGE 🤖"
+echo "iOS Bundle ID: $IOS_BUNDLE_ID 🍏"
+echo "App Copyright: $APP_COPYRIGHT ©️"
+echo "----------------------------------------"
+
+# Check if rename.dart exists
+RENAME_DART="rename.dart"
+if [ ! -f "$RENAME_DART" ]; then
+    error_exit "❌ Error: $RENAME_DART not found! Please ensure rename.dart exists with the necessary renaming logic."
+fi
+
+# Run the Dart script to rename Android and iOS packages
+echo "🔄 Renaming Android package..."
+dart run rename.dart "$ANDROID_PACKAGE" "--android"
+
+echo "🔄 Renaming iOS bundle identifier..."
+dart run rename.dart "$IOS_BUNDLE_ID" "--ios"
+
+# Update pubspec.yaml with app name, description, and version
+echo "📄 Updating pubspec.yaml with app details..."
+PUBSPEC_FILE="pubspec.yaml"
+
+if [ -f "$PUBSPEC_FILE" ]; then
+    # Backup pubspec.yaml
+    cp "$PUBSPEC_FILE" "${PUBSPEC_FILE}.bak"
+
+    # Update name (lowercase as per pubspec.yaml conventions)
+    sed -i.bak "s/^name: .*/name: ${APP_NAME}/" "$PUBSPEC_FILE"
+
+    # Update description
+    sed -i.bak "s/^description: .*/description: \"${APP_DESCRIPTION}\"/" "$PUBSPEC_FILE"
+
+    # Update version
+    sed -i.bak "s/^version: .*/version: ${APP_VERSION}/" "$PUBSPEC_FILE"
+
+    echo "✅ pubspec.yaml updated."
+else
+    echo "⚠️ Warning: $PUBSPEC_FILE not found."
+fi
+
+# Function to extract versionCode and versionName
+extract_versions() {
+    local version="$1"
+    if [[ "$version" == *"+"* ]]; then
+        VERSION_NAME=$(echo "$version" | cut -d'+' -f1)
+        VERSION_CODE=$(echo "$version" | cut -d'+' -f2)
+    else
+        VERSION_NAME="$version"
+        VERSION_CODE=1
+        echo "⚠️ Warning: VERSION_CODE missing in APP_VERSION. Setting VERSION_CODE to 1."
+    fi
+}
+
+# Extract versionCode and versionName from APP_VERSION
+extract_versions "$APP_VERSION"
+
+# Ensure VERSION_CODE is an integer
+if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
+    error_exit "❌ Error: VERSION_CODE extracted from APP_VERSION is not a valid integer."
+fi
+
+# Update Android build.gradle with versionCode and versionName
+# echo "🛠️ Updating Android build.gradle with version details..."
+# ANDROID_BUILD_GRADLE_FILE="android/app/build.gradle"
+
+# if [ -f "$ANDROID_BUILD_GRADLE_FILE" ]; then
+#     # Backup build.gradle
+#     cp "$ANDROID_BUILD_GRADLE_FILE" "${ANDROID_BUILD_GRADLE_FILE}.bak"
+
+#     # Create a temporary file
+#     TEMP_FILE=$(mktemp)
+
+#     # Process the file
+#     while IFS= read -r line
+#     do
+#         echo "$line" >> "$TEMP_FILE"
+#         if [[ "$line" == *"defaultConfig {"* ]]; then
+#             echo "        versionCode $VERSION_CODE" >> "$TEMP_FILE"
+#             echo "        versionName \"$VERSION_NAME\"" >> "$TEMP_FILE"
+#         fi
+#     done < "$ANDROID_BUILD_GRADLE_FILE"
+
+#     # Replace original file with processed file
+#     mv "$TEMP_FILE" "$ANDROID_BUILD_GRADLE_FILE"
+
+#     echo "✅ Android build.gradle updated with version details."
+# else
+#     echo "⚠️ Warning: $ANDROID_BUILD_GRADLE_FILE not found."
+# fi
+
+# Update iOS Info.plist with version details
+echo "🛠️ Updating iOS Info.plist with version details..."
+IOS_INFO_PLIST_FILE="ios/Runner/Info.plist"
+
+if [ -f "$IOS_INFO_PLIST_FILE" ]; then
+    # Backup Info.plist
+    cp "$IOS_INFO_PLIST_FILE" "${IOS_INFO_PLIST_FILE}.bak"
+
+    # Update CFBundleShortVersionString
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION_NAME" "$IOS_INFO_PLIST_FILE" 2>/dev/null || \
+    /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION_NAME" "$IOS_INFO_PLIST_FILE"
+
+    # Update CFBundleVersion
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION_CODE" "$IOS_INFO_PLIST_FILE" 2>/dev/null || \
+    /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION_CODE" "$IOS_INFO_PLIST_FILE"
+
+    echo "✅ iOS Info.plist updated with version details."
+else
+    echo "⚠️ Warning: $IOS_INFO_PLIST_FILE not found."
+fi
+
+# Update Android strings.xml with app details
+echo "📜 Updating Android strings.xml with app details..."
+if [ -f "$STRINGS_FILE" ]; then
+    # Backup strings.xml
+    cp "$STRINGS_FILE" "${STRINGS_FILE}.bak"
+
+    # Create a temporary file
+    TEMP_FILE=$(mktemp)
+
+    # Update the strings
+    sed -e "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">$APP_NAME</string>|g" \
+        -e "s|<string name=\"app_description\">.*</string>|<string name=\"app_description\">$APP_DESCRIPTION</string>|g" \
+        -e "s|<string name=\"app_version\">.*</string>|<string name=\"app_version\">$APP_VERSION</string>|g" \
+        -e "s|<string name=\"app_version_code\">.*</string>|<string name=\"app_version_code\">$VERSION_CODE</string>|g" \
+        -e "s|<string name=\"app_copyright\">.*</string>|<string name=\"app_copyright\">$APP_COPYRIGHT</string>|g" \
+        "$STRINGS_FILE" > "$TEMP_FILE"
+
+    # Replace original file with processed file
+    mv "$TEMP_FILE" "$STRINGS_FILE"
+
+    echo "✅ strings.xml has been updated."
+else
+    echo "❌ Error: strings.xml not found at $STRINGS_FILE"
+    exit 1
+fi
+
+# Final completion message with emoji
+echo "🎉 Configuration update completed successfully. ✅"
+
+```
 
 1. **Ensure Executable Permissions**
 
