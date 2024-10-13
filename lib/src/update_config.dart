@@ -16,7 +16,7 @@ class UpdateConfig {
     // Check if config.json exists
     final configFile = File(configPath);
     if (!await configFile.exists()) {
-      print('ERROR: $configPath not found!');
+      print('❌ ERROR: $configPath not found!');
       exit(1);
     }
 
@@ -27,7 +27,7 @@ class UpdateConfig {
     // Validate config fields
     if (!_validateConfig(config)) {
       print(
-          'ERROR: Invalid config.json. Please ensure all required fields are present.');
+          '❌ ERROR: Invalid config.json. Please ensure all required fields are present.');
       exit(1);
     }
 
@@ -39,18 +39,17 @@ class UpdateConfig {
     final iosBundleId = config['iosBundleId'] as String;
     final appCopyright = config['appCopyright'] as String;
 
-    print('Starting configuration update...');
-    print('App Name: $appName');
-    print('App Description: $appDescription');
-    print('App Version: $appVersion');
-    print('Android Package: $androidPackage');
-    print('iOS Bundle ID: $iosBundleId');
-    print('App Copyright: $appCopyright');
+    print('🚀 Starting configuration update...');
+    print(' 📦 App Name: $appName');
+    print(' 📝 App Description: $appDescription');
+    print(' 📦 App Version: $appVersion');
+    print(' 📱 Android Package: $androidPackage');
+    print(' 📱 iOS Bundle ID: $iosBundleId');
+    print(' 📝 App Copyright: $appCopyright');
     print('----------------------------------------');
 
     // Rename Android and iOS packages
-    await ChangeAppPackageName.start([androidPackage, '--both'], projectRoot);
-    await ChangeAppPackageName.start([iosBundleId, '--both'], projectRoot);
+    await ChangeAppPackageName.startBoth(androidPackage, iosBundleId);
 
     // Update pubspec.yaml
     await _updatePubspec(appName, appDescription, appVersion);
@@ -64,7 +63,7 @@ class UpdateConfig {
     // Update Android strings.xml
     await _updateAndroidStringsXml(appDescription, appCopyright, appName);
 
-    print('Configuration update completed successfully.');
+    print('✅ Configuration update completed successfully.');
   }
 
   Map<String, dynamic> _parseConfig(String contents) {
@@ -115,15 +114,15 @@ class UpdateConfig {
       (match) => 'version: $appVersion',
     );
 
-    await writeFileAsString(pubspecPath, contents);
-    print('pubspec.yaml updated.');
+    writeFileAsString(pubspecPath, contents);
+    print('✅ pubspec.yaml updated.');
   }
 
   Future<void> _updateAndroidBuildGradle(String appVersion) async {
     final buildGradlePath = '$projectRoot/android/app/build.gradle';
     final buildGradleFile = File(buildGradlePath);
     if (!await buildGradleFile.exists()) {
-      print('Warning: android/app/build.gradle not found.');
+      print('❌ Warning: android/app/build.gradle not found.');
       return;
     }
 
@@ -145,8 +144,8 @@ class UpdateConfig {
       (match) => 'versionName "$versionName"',
     );
 
-    await writeFileAsString(buildGradlePath, contents);
-    print('android/app/build.gradle updated with version details.');
+    writeFileAsString(buildGradlePath, contents);
+    print('✅ android/app/build.gradle updated with version details.');
   }
 
   Future<void> _updateIosInfoPlist(
@@ -154,7 +153,7 @@ class UpdateConfig {
     final infoPlistPath = '$projectRoot/ios/Runner/Info.plist';
     final infoPlistFile = File(infoPlistPath);
     if (!await infoPlistFile.exists()) {
-      print('Warning: ios/Runner/Info.plist not found.');
+      print('❌ Warning: ios/Runner/Info.plist not found.');
       return;
     }
 
@@ -185,7 +184,7 @@ class UpdateConfig {
           '<key>CFBundleIdentifier</key>\n\t<string>$iosBundleId</string>',
     );
 
-    await writeFileAsString(infoPlistPath, contents);
+    writeFileAsString(infoPlistPath, contents);
     print('ios/Runner/Info.plist updated with version details.');
   }
 
@@ -195,7 +194,8 @@ class UpdateConfig {
         '$projectRoot/android/app/src/main/res/values/strings.xml';
     final stringsXmlFile = File(stringsXmlPath);
     if (!await stringsXmlFile.exists()) {
-      print('Warning: android/app/src/main/res/values/strings.xml not found.');
+      print(
+          '❌ Warning: android/app/src/main/res/values/strings.xml not found.');
       return;
     }
 
@@ -227,9 +227,9 @@ class UpdateConfig {
           '    <string name="app_description">$appDescription</string>\n    <string name="app_copyright">$copyright</string>\n</resources>');
     }
 
-    await writeFileAsString(stringsXmlPath, contents);
+    writeFileAsString(stringsXmlPath, contents);
     print(
-        'android/app/src/main/res/values/strings.xml updated with app details.');
+        '✅ android/app/src/main/res/values/strings.xml updated with app details.');
   }
 
   // Update the method signature to accept a packageName parameter
@@ -237,4 +237,8 @@ class UpdateConfig {
     // Return the last segment of the package name
     return packageName.split('.').last;
   }
+}
+
+void writeFileAsString(String path, String contents) {
+  File(path).writeAsStringSync(contents);
 }

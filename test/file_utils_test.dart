@@ -40,8 +40,8 @@ void main() {
       final tempFile = File('temp_regex_replace.txt');
       await tempFile.writeAsString('versionCode 1');
 
-      await replaceInFileRegex('temp_regex_replace.txt',
-          RegExp(r'versionCode \d+'), 'versionCode 2');
+      await replaceInFileRegex(
+          'temp_regex_replace.txt', r'versionCode \d+', 'versionCode 2');
       final content = await tempFile.readAsString();
       expect(content, 'versionCode 2');
 

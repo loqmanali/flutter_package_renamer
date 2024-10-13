@@ -20,9 +20,7 @@ Future<void> main(List<String> arguments) async {
 
   if (arguments[0] == '--update-config') {
     final configPath = arguments.length > 1 ? arguments[1] : 'config.json';
-    final projectRoot = Directory.current.path;
-    final updater =
-        UpdateConfig(configPath: configPath, projectRoot: projectRoot);
+    final updater = UpdateConfig(configPath: configPath, projectRoot: '.');
     await updater.run();
     exit(0);
   }
@@ -30,8 +28,7 @@ Future<void> main(List<String> arguments) async {
   if (arguments.length == 1) {
     // Rename both platforms
     final newPackageName = arguments[0];
-    final projectRoot = Directory.current.path;
-    await ChangeAppPackageName.start([newPackageName, '--both'], projectRoot);
+    await ChangeAppPackageName.startBoth(newPackageName, newPackageName);
     exit(0);
   }
 
@@ -39,15 +36,13 @@ Future<void> main(List<String> arguments) async {
     // Rename specific platform
     final newPackageName = arguments[0];
     final platformFlag = arguments[1].toLowerCase();
-    final projectRoot = Directory.current.path;
 
     if (platformFlag == '--android') {
-      await ChangeAppPackageName.start(
-          [newPackageName, '--android'], projectRoot);
+      await ChangeAppPackageName.startAndroid(newPackageName);
     } else if (platformFlag == '--ios') {
-      await ChangeAppPackageName.start([newPackageName, '--ios'], projectRoot);
+      await ChangeAppPackageName.startIOS(newPackageName);
     } else if (platformFlag == '--both') {
-      await ChangeAppPackageName.start([newPackageName, '--both'], projectRoot);
+      await ChangeAppPackageName.startBoth(newPackageName, newPackageName);
     } else {
       print('Invalid platform flag. Use "--android", "--ios", or "--both".');
       exit(1);
@@ -55,7 +50,7 @@ Future<void> main(List<String> arguments) async {
     exit(0);
   }
 
-  print('Invalid arguments.');
+  print('❌ Invalid arguments.');
   print('Usage: rename <new_package_name> [--android|--ios|--both]');
   print('   or: rename --update-config <path_to_config.json>');
   exit(1);
