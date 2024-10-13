@@ -4,36 +4,40 @@ import 'android_rename_steps.dart';
 import 'ios_rename_steps.dart';
 
 class ChangeAppPackageName {
-  static Future<void> start(List<String> arguments) async {
+  static Future<void> start(List<String> arguments, String projectRoot) async {
     if (arguments.isEmpty) {
-      print('🚫 New package name is missing. Please provide a package name.');
+      print('New package name is missing. Please provide a package name.');
       return;
     }
 
     if (arguments.length == 1) {
-      // No platform-specific flag, rename both Android and iOS
-      print('🔄 Renaming package for both Android and iOS.');
-      await _renameBoth(arguments[0]);
+      // Rename both platforms
+      final newPackageName = arguments[0];
+      await _renameBoth(newPackageName, projectRoot);
     } else if (arguments.length == 2) {
-      // Check for platform-specific flags
-      var platform = arguments[1].toLowerCase();
+      // Rename specific platform
+      final newPackageName = arguments[0];
+      final platform = arguments[1].toLowerCase();
       if (platform == '--android') {
-        print('🤖 Renaming package for Android only.');
-        await AndroidRenameSteps(arguments[0]).process();
+        print('Renaming package for Android only.');
+        await AndroidRenameSteps(newPackageName, projectRoot).process();
       } else if (platform == '--ios') {
-        print('🍏 Renaming package for iOS only.');
-        await IosRenameSteps(arguments[0]).process();
+        print('Renaming bundle identifier for iOS only.');
+        await IosRenameSteps(newPackageName, projectRoot).process();
+      } else if (platform == '--both') {
+        await _renameBoth(newPackageName, projectRoot);
       } else {
-        print('❌ Invalid argument. Use "--android" or "--ios".');
+        print('Invalid platform flag. Use "--android", "--ios", or "--both".');
       }
     } else {
-      print(
-          '⚠️ Too many arguments. This script accepts only the new package name and an optional platform flag.');
+      print('Too many arguments. Use:');
+      print('  rename <new_package_name> [--android|--ios|--both]');
     }
   }
 
-  static Future<void> _renameBoth(String newPackageName) async {
-    await AndroidRenameSteps(newPackageName).process();
-    await IosRenameSteps(newPackageName).process();
+  static Future<void> _renameBoth(
+      String newPackageName, String projectRoot) async {
+    await AndroidRenameSteps(newPackageName, projectRoot).process();
+    await IosRenameSteps(newPackageName, projectRoot).process();
   }
 }

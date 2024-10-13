@@ -1,4 +1,4 @@
-name: rename_flutter_app
+name: flutter_package_renamer
 description: "A tool to rename flutter apps"
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo

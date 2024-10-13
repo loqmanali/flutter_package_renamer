@@ -1,6 +1,5 @@
 // lib/src/file_utils.dart
 
-import 'dart:async';
 import 'dart:io';
 
 /// Reads the content of a file as a string.
@@ -10,74 +9,52 @@ Future<String?> readFileAsString(String path) async {
     if (await file.exists()) {
       return await file.readAsString();
     } else {
-      print('🚫 File not found: $path');
+      print('File not found: $path');
       return null;
     }
   } catch (e) {
-    print('❗ Error reading file $path: $e');
+    print('Error reading file $path: $e');
     return null;
   }
 }
 
-/// Replaces occurrences in a file using a regex pattern.
-Future<void> replaceInFileRegex(
-    String path, String pattern, String replacement) async {
+/// Writes a string to a file.
+Future<void> writeFileAsString(String path, String content) async {
   try {
     final file = File(path);
-    if (!await file.exists()) {
-      print('🚫 File not found: $path');
-      return;
-    }
-
-    String contents = await file.readAsString();
-    final regExp = RegExp(pattern, multiLine: true);
-    String updatedContents = contents.replaceAll(regExp, replacement);
-
-    await file.writeAsString(updatedContents);
-    print('✅ Replaced pattern in $path');
+    await file.writeAsString(content);
+    print('Successfully wrote to $path');
   } catch (e) {
-    print('❗ Error replacing pattern in $path: $e');
+    print('Error writing to file $path: $e');
   }
 }
 
-/// Replaces oldValue with newValue in a file.
+/// Replaces a pattern in a file using regular expressions.
+Future<void> replaceInFileRegex(
+    String path, RegExp pattern, String replacement) async {
+  try {
+    String? contents = await readFileAsString(path);
+    if (contents == null) return;
+
+    String updatedContents = contents.replaceAll(pattern, replacement);
+    await writeFileAsString(path, updatedContents);
+    print('Replaced pattern in $path');
+  } catch (e) {
+    print('Error replacing pattern in $path: $e');
+  }
+}
+
+/// Replaces a specific string in a file.
 Future<void> replaceInFile(
     String path, String oldValue, String newValue) async {
   try {
-    final file = File(path);
-    if (!await file.exists()) {
-      print('🚫 File not found: $path');
-      return;
-    }
+    String? contents = await readFileAsString(path);
+    if (contents == null) return;
 
-    String contents = await file.readAsString();
     String updatedContents = contents.replaceAll(oldValue, newValue);
-
-    await file.writeAsString(updatedContents);
-    print('✅ Replaced "$oldValue" with "$newValue" in $path');
+    await writeFileAsString(path, updatedContents);
+    print('Replaced "$oldValue" with "$newValue" in $path');
   } catch (e) {
-    print('❗ Error replacing "$oldValue" with "$newValue" in $path: $e');
-  }
-}
-
-/// Writes contents to a file from a string.
-Future<void> writeFileFromString(String path, String contents) async {
-  try {
-    final file = File(path);
-    await file.writeAsString(contents);
-    print('✍️ Written contents to $path');
-  } catch (e) {
-    print('❗ Error writing to file $path: $e');
-  }
-}
-
-/// Lists contents of a directory recursively.
-Future<List<FileSystemEntity>> dirContents(Directory dir) async {
-  if (!await dir.exists()) return [];
-  try {
-    return await dir.list(recursive: true).toList();
-  } catch (e) {
-    print('❗ Error listing directory ${dir.path}: $e');
-    return [];
+    print('Error replacing "$oldValue" with "$newValue" in $path: $e');
   }
 }

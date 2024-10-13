@@ -3,29 +3,31 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'change_app_package_name.dart';
+import 'package:flutter_package_renamer/src/change_app_package_name.dart';
+import 'package:flutter_package_renamer/src/file_utils.dart';
 
 class UpdateConfig {
   final String configPath;
+  final String projectRoot;
 
-  UpdateConfig(this.configPath);
+  UpdateConfig({required this.configPath, required this.projectRoot});
 
   Future<void> run() async {
     // Check if config.json exists
     final configFile = File(configPath);
     if (!await configFile.exists()) {
-      print('❌ ERROR: $configPath not found!');
+      print('ERROR: $configPath not found!');
       exit(1);
     }
 
     // Read config.json
     final configContents = await configFile.readAsString();
-    final config = parseConfig(configContents);
+    final config = _parseConfig(configContents);
 
     // Validate config fields
-    if (!validateConfig(config)) {
+    if (!_validateConfig(config)) {
       print(
-          '❌ ERROR: Invalid config.json. Please ensure all required fields are present.');
+          'ERROR: Invalid config.json. Please ensure all required fields are present.');
       exit(1);
     }
 
@@ -37,43 +39,44 @@ class UpdateConfig {
     final iosBundleId = config['iosBundleId'] as String;
     final appCopyright = config['appCopyright'] as String;
 
-    print('🚀 Starting configuration update...');
-    print('📦 App Name: $appName');
-    print('📝 App Description: $appDescription');
-    print('🔖 App Version: $appVersion');
-    print('📱 Android Package: $androidPackage');
-    print('🍏 iOS Bundle ID: $iosBundleId');
+    print('Starting configuration update...');
+    print('App Name: $appName');
+    print('App Description: $appDescription');
+    print('App Version: $appVersion');
+    print('Android Package: $androidPackage');
+    print('iOS Bundle ID: $iosBundleId');
+    print('App Copyright: $appCopyright');
     print('----------------------------------------');
 
     // Rename Android and iOS packages
-    await ChangeAppPackageName.start([androidPackage, '--android']);
-    await ChangeAppPackageName.start([iosBundleId, '--ios']);
+    await ChangeAppPackageName.start([androidPackage, '--both'], projectRoot);
+    await ChangeAppPackageName.start([iosBundleId, '--both'], projectRoot);
 
     // Update pubspec.yaml
-    await updatePubspec(appName, appDescription, appVersion);
+    await _updatePubspec(appName, appDescription, appVersion);
 
     // Update Android build.gradle
-    await updateAndroidBuildGradle(appVersion);
+    await _updateAndroidBuildGradle(appVersion);
 
     // Update iOS Info.plist
-    await updateIosInfoPlist(appVersion);
+    await _updateIosInfoPlist(appVersion, iosBundleId);
 
-    // Update strings.xml
-    await updateAndroidStringsXml(appDescription, appCopyright);
+    // Update Android strings.xml
+    await _updateAndroidStringsXml(appDescription, appCopyright, appName);
 
-    print('✅ Configuration update completed successfully.');
+    print('Configuration update completed successfully.');
   }
 
-  Map<String, dynamic> parseConfig(String contents) {
+  Map<String, dynamic> _parseConfig(String contents) {
     try {
       return jsonDecode(contents) as Map<String, dynamic>;
     } catch (e) {
-      print('❌ ERROR: Failed to parse config.json - $e');
+      print('ERROR: Failed to parse config.json - $e');
       exit(1);
     }
   }
 
-  bool validateConfig(Map<String, dynamic> config) {
+  bool _validateConfig(Map<String, dynamic> config) {
     return config.containsKey('appName') &&
         config.containsKey('appDescription') &&
         config.containsKey('appVersion') &&
@@ -82,34 +85,43 @@ class UpdateConfig {
         config.containsKey('appCopyright');
   }
 
-  Future<void> updatePubspec(
+  Future<void> _updatePubspec(
       String appName, String appDescription, String appVersion) async {
-    final pubspecFile = File('pubspec.yaml');
+    final pubspecPath = '$projectRoot/pubspec.yaml';
+    final pubspecFile = File(pubspecPath);
     if (!await pubspecFile.exists()) {
       print('Warning: pubspec.yaml not found.');
       return;
     }
 
-    final contents = await pubspecFile.readAsString();
-    final lines = contents.split('\n');
-    final updatedLines = lines.map((line) {
-      if (line.startsWith('name: ')) {
-        return 'name: ${appName.toLowerCase()}';
-      } else if (line.startsWith('description: ')) {
-        return 'description: "$appDescription"';
-      } else if (line.startsWith('version: ')) {
-        return 'version: $appVersion';
-      } else {
-        return line;
-      }
-    }).toList();
+    String? contents = await readFileAsString(pubspecPath);
+    if (contents == null) return;
 
-    await pubspecFile.writeAsString(updatedLines.join('\n'));
+    // Replace name
+    contents = contents.replaceAllMapped(
+      RegExp(r'^name:\s+.*$', multiLine: true),
+      (match) => 'name: ${appName.toLowerCase()}',
+    );
+
+    // Replace description
+    contents = contents.replaceAllMapped(
+      RegExp(r'^description:\s+.*$', multiLine: true),
+      (match) => 'description: "$appDescription"',
+    );
+
+    // Replace version
+    contents = contents.replaceAllMapped(
+      RegExp(r'^version:\s+.*$', multiLine: true),
+      (match) => 'version: $appVersion',
+    );
+
+    await writeFileAsString(pubspecPath, contents);
     print('pubspec.yaml updated.');
   }
 
-  Future<void> updateAndroidBuildGradle(String appVersion) async {
-    final buildGradleFile = File('android/app/build.gradle');
+  Future<void> _updateAndroidBuildGradle(String appVersion) async {
+    final buildGradlePath = '$projectRoot/android/app/build.gradle';
+    final buildGradleFile = File(buildGradlePath);
     if (!await buildGradleFile.exists()) {
       print('Warning: android/app/build.gradle not found.');
       return;
@@ -118,55 +130,77 @@ class UpdateConfig {
     final versionName = appVersion.split('+').first;
     final versionCode = appVersion.split('+').last;
 
-    final contents = await buildGradleFile.readAsString();
-    final updatedContents = contents
-        .replaceAll(RegExp(r'versionCode\s+\d+'), 'versionCode $versionCode')
-        .replaceAll(
-            RegExp(r'versionName\s+".+"'), 'versionName "$versionName"');
+    String? contents = await readFileAsString(buildGradlePath);
+    if (contents == null) return;
 
-    await buildGradleFile.writeAsString(updatedContents);
+    // Update versionCode
+    contents = contents.replaceAllMapped(
+      RegExp(r'versionCode\s+\d+'),
+      (match) => 'versionCode $versionCode',
+    );
+
+    // Update versionName
+    contents = contents.replaceAllMapped(
+      RegExp(r'versionName\s+".+"'),
+      (match) => 'versionName "$versionName"',
+    );
+
+    await writeFileAsString(buildGradlePath, contents);
     print('android/app/build.gradle updated with version details.');
   }
 
-  Future<void> updateIosInfoPlist(String appVersion) async {
-    final infoPlistFile = File('ios/Runner/Info.plist');
+  Future<void> _updateIosInfoPlist(
+      String appVersion, String iosBundleId) async {
+    final infoPlistPath = '$projectRoot/ios/Runner/Info.plist';
+    final infoPlistFile = File(infoPlistPath);
     if (!await infoPlistFile.exists()) {
       print('Warning: ios/Runner/Info.plist not found.');
       return;
     }
 
+    String? contents = await readFileAsString(infoPlistPath);
+    if (contents == null) return;
+
     final versionName = appVersion.split('+').first;
     final versionCode = appVersion.split('+').last;
 
-    // Update CFBundleShortVersionString and CFBundleVersion
-    // This requires parsing the plist, which can be done using PlistBuddy or a Dart plist parser.
-    // For simplicity, we'll use PlistBuddy via Process.
+    // Update CFBundleShortVersionString
+    contents = contents.replaceAllMapped(
+      RegExp(
+          r'<key>CFBundleShortVersionString<\/key>\s*<string>[^<]+<\/string>'),
+      (match) =>
+          '<key>CFBundleShortVersionString</key>\n\t<string>$versionName</string>',
+    );
 
-    final process = await Process.run('PlistBuddy', [
-      '-c',
-      'Set :CFBundleShortVersionString $versionName',
-      '-c',
-      'Set :CFBundleVersion $versionCode',
-      infoPlistFile.path
-    ]);
+    // Update CFBundleVersion
+    contents = contents.replaceAllMapped(
+      RegExp(r'<key>CFBundleVersion<\/key>\s*<string>[^<]+<\/string>'),
+      (match) => '<key>CFBundleVersion</key>\n\t<string>$versionCode</string>',
+    );
 
-    if (process.exitCode == 0) {
-      print('ios/Runner/Info.plist updated with version details.');
-    } else {
-      print(
-          'ERROR: Failed to update ios/Runner/Info.plist - ${process.stderr}');
-    }
+    // Update CFBundleIdentifier
+    contents = contents.replaceAllMapped(
+      RegExp(r'<key>CFBundleIdentifier<\/key>\s*<string>[^<]+<\/string>'),
+      (match) =>
+          '<key>CFBundleIdentifier</key>\n\t<string>$iosBundleId</string>',
+    );
+
+    await writeFileAsString(infoPlistPath, contents);
+    print('ios/Runner/Info.plist updated with version details.');
   }
 
-  Future<void> updateAndroidStringsXml(
-      String appDescription, String appCopyright) async {
-    final stringsXmlFile = File('android/app/src/main/res/values/strings.xml');
+  Future<void> _updateAndroidStringsXml(
+      String appDescription, String copyright, String appName) async {
+    final stringsXmlPath =
+        '$projectRoot/android/app/src/main/res/values/strings.xml';
+    final stringsXmlFile = File(stringsXmlPath);
     if (!await stringsXmlFile.exists()) {
       print('Warning: android/app/src/main/res/values/strings.xml not found.');
       return;
     }
 
-    String contents = await stringsXmlFile.readAsString();
+    String? contents = await readFileAsString(stringsXmlPath);
+    if (contents == null) return;
 
     // Update app_description
     contents = contents.replaceAllMapped(
@@ -174,21 +208,33 @@ class UpdateConfig {
       (match) => '<string name="app_description">$appDescription</string>',
     );
 
+    // Update app_name
+    contents = contents.replaceAllMapped(
+      RegExp(r'<string name="app_name">.*?</string>'),
+      (match) => '<string name="app_name">${_extractAppName(appName)}</string>',
+    );
+
     // Update or add copyright
     if (RegExp(r'<string name="app_copyright">.*?</string>')
         .hasMatch(contents)) {
       contents = contents.replaceAllMapped(
         RegExp(r'<string name="app_copyright">.*?</string>'),
-        (match) => '<string name="app_copyright">$appCopyright</string>',
+        (match) => '<string name="app_copyright">$copyright</string>',
       );
     } else {
       // Insert before closing </resources>
       contents = contents.replaceAll(RegExp(r'</resources>'),
-          '    <string name="app_description">$appDescription</string>\n    <string name="app_copyright">$appCopyright</string>\n</resources>');
+          '    <string name="app_description">$appDescription</string>\n    <string name="app_copyright">$copyright</string>\n</resources>');
     }
 
-    await stringsXmlFile.writeAsString(contents);
+    await writeFileAsString(stringsXmlPath, contents);
     print(
         'android/app/src/main/res/values/strings.xml updated with app details.');
+  }
+
+  // Update the method signature to accept a packageName parameter
+  String _extractAppName(String packageName) {
+    // Return the last segment of the package name
+    return packageName.split('.').last;
   }
 }
