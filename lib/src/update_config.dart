@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_package_renamer/src/change_app_package_name.dart';
+import 'change_app_package_name.dart';
 
 class UpdateConfig {
   final String configPath;

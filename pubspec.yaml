@@ -1,5 +1,5 @@
-name: test app
-description: "A test app"
+name: rename_flutter_app
+description: "A tool to rename flutter apps"
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
 

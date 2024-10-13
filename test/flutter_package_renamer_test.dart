@@ -1,4 +1,4 @@
-import 'package:flutter_package_renamer/src/update_config.dart';
+import 'package:rename_flutter_app/src/update_config.dart';
 import 'package:test/test.dart';
 
 void main() {

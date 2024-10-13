@@ -2,7 +2,7 @@
 
 import 'dart:io';
 
-import 'package:flutter_package_renamer/src/file_utils.dart';
+import 'package:rename_flutter_app/src/file_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
