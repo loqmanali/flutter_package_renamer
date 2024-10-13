@@ -62,7 +62,7 @@ class UpdateConfig {
 
     // Update Android strings.xml
     await _updateAndroidStringsXml(
-        appDescription, appCopyright, androidPackage);
+        appDescription, appCopyright, androidPackage, appVersion);
 
     print('✅ Configuration update completed successfully.');
   }
@@ -189,8 +189,8 @@ class UpdateConfig {
     print('✅ ios/Runner/Info.plist updated with version details.');
   }
 
-  Future<void> _updateAndroidStringsXml(
-      String appDescription, String copyright, String androidPackage) async {
+  Future<void> _updateAndroidStringsXml(String appDescription, String copyright,
+      String androidPackage, String appVersion) async {
     final stringsXmlPath =
         '$projectRoot/android/app/src/main/res/values/strings.xml';
     final stringsXmlFile = File(stringsXmlPath);
@@ -203,12 +203,6 @@ class UpdateConfig {
     String? contents = await readFileAsString(stringsXmlPath);
     if (contents == null) return;
 
-    // Update app_description
-    contents = contents.replaceAllMapped(
-      RegExp(r'<string name="app_description">.*?</string>'),
-      (match) => '<string name="app_description">$appDescription</string>',
-    );
-
     // Update app_name
     contents = contents.replaceAllMapped(
       RegExp(r'<string name="app_name">.*?</string>'),
@@ -216,18 +210,30 @@ class UpdateConfig {
           '<string name="app_name">${_extractAppName(androidPackage)}</string>',
     );
 
-    // Update or add copyright
-    if (RegExp(r'<string name="app_copyright">.*?</string>')
-        .hasMatch(contents)) {
-      contents = contents.replaceAllMapped(
-        RegExp(r'<string name="app_copyright">.*?</string>'),
-        (match) => '<string name="app_copyright">$copyright</string>',
-      );
-    } else {
-      // Insert before closing </resources>
-      contents = contents.replaceAll(RegExp(r'</resources>'),
-          '    <string name="app_description">$appDescription</string>\n    <string name="app_copyright">$copyright</string>\n</resources>');
-    }
+    // Update app_description
+    contents = contents.replaceAllMapped(
+      RegExp(r'<string name="app_description">.*?</string>'),
+      (match) => '<string name="app_description">$appDescription</string>',
+    );
+
+    // Update app_version
+    contents = contents.replaceAllMapped(
+      RegExp(r'<string name="app_version">.*?</string>'),
+      (match) => '<string name="app_version">$appVersion</string>',
+    );
+
+    // Update app_version_code
+    final versionCode = appVersion.split('+').last;
+    contents = contents.replaceAllMapped(
+      RegExp(r'<string name="app_version_code">.*?</string>'),
+      (match) => '<string name="app_version_code">$versionCode</string>',
+    );
+
+    // Update app_copyright
+    contents = contents.replaceAllMapped(
+      RegExp(r'<string name="app_copyright">.*?</string>'),
+      (match) => '<string name="app_copyright">$copyright</string>',
+    );
 
     writeFileAsString(stringsXmlPath, contents);
     print(
