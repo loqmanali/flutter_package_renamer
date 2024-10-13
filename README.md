@@ -320,7 +320,7 @@ echo "🎉 Configuration update completed successfully. ✅"
    Make sure the `update_config.sh` script is executable.
 
    ```bash
-   chmod +x scripts/update_config.sh
+   chmod +x update_config.sh
    ```
 
 2. **Execute the Shell Script**
@@ -328,7 +328,7 @@ echo "🎉 Configuration update completed successfully. ✅"
    Run the script from your Flutter project's root directory.
 
    ```bash
-   ./scripts/update_config.sh
+   ./update_config.sh
    ```
 
    **What the Script Does:**
