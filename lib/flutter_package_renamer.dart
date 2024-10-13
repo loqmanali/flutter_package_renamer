@@ -7,7 +7,7 @@ import 'dart:io'; // Add this import for File and exit
 
 import 'package:args/args.dart';
 
-import 'src/script.dart' as script;
+import 'src/change.dart' as script;
 
 // import 'bin/script.dart' as script;
 

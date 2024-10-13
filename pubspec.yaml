@@ -16,7 +16,8 @@ dev_dependencies:
 
 executables:
   rename: bin/rename.dart
-  script: src/script.dart
+  script: bin/script.dart
+  change: lib/src/change.dart
   run_update_config: bin/run_update_config.dart
 
 flutter:
