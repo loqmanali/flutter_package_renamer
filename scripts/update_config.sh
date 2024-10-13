@@ -48,18 +48,27 @@ echo "iOS Bundle ID: $IOS_BUNDLE_ID 🍏"
 echo "App Copyright: $APP_COPYRIGHT ©️"
 echo "----------------------------------------"
 
-# Check if rename.dart exists
-RENAME_DART="rename.dart"
-if [ ! -f "$RENAME_DART" ]; then
-    error_exit "❌ Error: $RENAME_DART not found! Please ensure rename.dart exists with the necessary renaming logic."
+# Find Flutter executable path
+FLUTTER_PATH=$(which flutter)
+if [ -z "$FLUTTER_PATH" ]; then
+    error_exit "❌ Error: Flutter executable not found in PATH."
 fi
 
-# Run the Dart script to rename Android and iOS packages
+# Check if flutter_package_renamer is installed
+if ! grep -q "flutter_package_renamer:" pubspec.yaml; then
+    error_exit "❌ Error: flutter_package_renamer is not listed in pubspec.yaml. Please add it to your dependencies."
+fi
+
+# Run flutter pub get to ensure the package is available
+echo "📦 Running flutter pub get..."
+flutter pub get
+
+# Run the package renamer for Android and iOS
 echo "🔄 Renaming Android package..."
-dart run rename.dart "$ANDROID_PACKAGE" "--android"
+flutter pub run flutter_package_renamer:rename "$ANDROID_PACKAGE" "--android"
 
 echo "🔄 Renaming iOS bundle identifier..."
-dart run rename.dart "$IOS_BUNDLE_ID" "--ios"
+flutter pub run flutter_package_renamer:rename "$IOS_BUNDLE_ID" "--ios"
 
 # Update pubspec.yaml with app name, description, and version
 echo "📄 Updating pubspec.yaml with app details..."
@@ -153,6 +162,44 @@ if [ -f "$IOS_INFO_PLIST_FILE" ]; then
 else
     echo "⚠️ Warning: $IOS_INFO_PLIST_FILE not found."
 fi
+
+# Update Android package name in build.gradle
+echo "🔄 Updating Android package name in build.gradle..."
+GRADLE_FILE="android/app/build.gradle"
+
+if [ ! -f "$GRADLE_FILE" ]; then
+    error_exit "❌ Error: $GRADLE_FILE not found."
+fi
+
+# Update applicationId and namespace
+awk -v package="$ANDROID_PACKAGE" '
+    /defaultConfig {/,/}/ {
+        if ($1 == "applicationId") {
+            $0 = "        applicationId \"" package "\""
+        }
+    }
+    /android {/,/}/ {
+        if ($1 == "namespace") {
+            $0 = "    namespace \"" package "\""
+        }
+    }
+    {print}
+' "$GRADLE_FILE" > "${GRADLE_FILE}.tmp" && mv "${GRADLE_FILE}.tmp" "$GRADLE_FILE"
+
+echo "✅ Updated $GRADLE_FILE with new package name: $ANDROID_PACKAGE"
+
+# Update iOS bundle identifier
+echo "🔄 Updating iOS bundle identifier..."
+PLIST_FILE="ios/Runner/Info.plist"
+
+if [ ! -f "$PLIST_FILE" ]; then
+    error_exit "❌ Error: $PLIST_FILE not found."
+fi
+
+# Use PlistBuddy to update CFBundleIdentifier
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $IOS_BUNDLE_ID" "$PLIST_FILE"
+
+echo "✅ Updated $PLIST_FILE with new bundle identifier: $IOS_BUNDLE_ID"
 
 # Update Android strings.xml with app details
 echo "📜 Updating Android strings.xml with app details..."
