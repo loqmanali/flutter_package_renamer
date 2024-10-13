@@ -8,10 +8,15 @@ import 'package:path/path.dart' as path;
 
 /// Entry point of the script.
 Future<void> main(List<String> args) async {
-  // Exit immediately if a command exits with a non-zero status.
-  // Equivalent to 'set -e' in bash.
+  if (args.isEmpty) {
+    print('❌ Error: Config file path not provided');
+    exit(1);
+  }
+
+  final configFilePath = args[0];
+
   try {
-    await runUpdateConfig();
+    await runUpdateConfig(configFilePath);
     print("🎉 Configuration update completed successfully. ✅");
   } catch (e) {
     print("❌ An error occurred: $e");
@@ -20,9 +25,8 @@ Future<void> main(List<String> args) async {
 }
 
 /// Runs the entire configuration update process.
-Future<void> runUpdateConfig() async {
+Future<void> runUpdateConfig(String configFilePath) async {
   // Paths to necessary files
-  final configFilePath = 'config.json';
   final pubspecFilePath = 'pubspec.yaml';
   final stringsXmlPath = 'android/app/src/main/res/values/strings.xml';
   final iosInfoPlistPath = 'ios/Runner/Info.plist';
